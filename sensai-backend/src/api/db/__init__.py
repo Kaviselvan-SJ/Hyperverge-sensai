@@ -34,6 +34,7 @@ from api.config import (
     bq_sync_table_name,
 )
 from api.db.migration import run_migrations
+from api.db.gamification_schema import create_gamification_tables
 
 
 async def create_organizations_table(cursor):
@@ -710,13 +711,15 @@ async def init_db():
 
             await create_bq_sync_table(cursor)
 
+            await create_gamification_tables(cursor)
+
             await conn.commit()
 
         except Exception as exception:
             # delete db
-            os.remove(sqlite_db_path)
+            if exists(sqlite_db_path):
+                os.remove(sqlite_db_path)
             raise exception
-
 
 async def delete_useless_tables():
     from api.config import (

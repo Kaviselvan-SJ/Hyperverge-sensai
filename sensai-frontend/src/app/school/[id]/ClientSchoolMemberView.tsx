@@ -16,6 +16,8 @@ import MentorCohortView from "@/components/MentorCohortView";
 import MemberSchoolViewHeader from '@/components/MemberSchoolViewHeader';
 import { updateTaskAndQuestionIdInUrl } from "@/lib/utils/urlUtils";
 import { useThemePreference } from "@/lib/hooks/useThemePreference";
+import { GamifiedHUD } from "@/components/gamification/GamifiedHUD";
+import { CourseWorld } from "@/components/gamification/CourseWorld";
 
 interface School {
     id: number;
@@ -545,25 +547,45 @@ export default function ClientSchoolMemberView({ slug }: { slug: string }) {
                                                                 courses={courses}
                                                             />
                                                         ) : (
-                                                            <LearnerCohortView
-                                                                courseTitle={courses.length > 1 ? "" : courses[activeCourseIndex].name}
-                                                                modules={courseModules}
-                                                                schoolId={school.id.toString()}
-                                                                cohortId={activeCohort?.id.toString()}
-                                                                streakDays={2}
-                                                                activeDays={["M", "T"]}
-                                                                completedTaskIds={completedTaskIds}
-                                                                completedQuestionIds={completedQuestionIds}
-                                                                courses={courses}
-                                                                onCourseSelect={handleCourseSelect}
-                                                                activeCourseIndex={activeCourseIndex}
-                                                                taskId={taskId}
-                                                                questionId={questionId}
-                                                                onUpdateTaskAndQuestionIdInUrl={
-                                                                    (taskId, questionId) => 
-                                                                        updateTaskAndQuestionIdInUrl(router, taskId, questionId)
-                                                                }
-                                                            />
+                                                            <div className="flex flex-col gap-6 w-full mx-auto">
+                                                                <div className="mb-4 w-full">
+                                                                    <GamifiedHUD />
+                                                                </div>
+                                                                
+                                                                {courses.length > 0 && (
+                                                                    <CourseWorld 
+                                                                        courseId={courses[activeCourseIndex]?.id || 0} 
+                                                                        title={courses[activeCourseIndex]?.name || "Course Map"} 
+                                                                    />
+                                                                )}
+                                                                
+                                                                <div className="mt-16 w-full opacity-60 hover:opacity-100 transition-all duration-500 border-t pt-8">
+                                                                    <div className="w-full flex items-center gap-4 mb-4 text-muted-foreground">
+                                                                        <div className="h-px bg-border flex-1"></div>
+                                                                        <span className="text-sm font-semibold tracking-wider uppercase">Classic Linear View</span>
+                                                                        <div className="h-px bg-border flex-1"></div>
+                                                                    </div>
+                                                                    <LearnerCohortView
+                                                                        courseTitle={courses.length > 1 ? "" : courses[activeCourseIndex].name}
+                                                                        modules={courseModules}
+                                                                        schoolId={school.id.toString()}
+                                                                        cohortId={activeCohort?.id.toString()}
+                                                                        streakDays={2}
+                                                                        activeDays={["M", "T"]}
+                                                                        completedTaskIds={completedTaskIds}
+                                                                        completedQuestionIds={completedQuestionIds}
+                                                                        courses={courses}
+                                                                        onCourseSelect={handleCourseSelect}
+                                                                        activeCourseIndex={activeCourseIndex}
+                                                                        taskId={taskId}
+                                                                        questionId={questionId}
+                                                                        onUpdateTaskAndQuestionIdInUrl={
+                                                                            (taskId, questionId) => 
+                                                                                updateTaskAndQuestionIdInUrl(router, taskId, questionId)
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 )}

@@ -2028,6 +2028,15 @@ export default function CreateCourse() {
                                             </span>
                                             <span>Preview</span>
                                         </button>
+                                        <button
+                                            className="flex items-center px-6 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 outline-none rounded-full transition-all cursor-pointer"
+                                            onClick={() => router.push(`/school/admin/${schoolId}/courses/${courseId}/level-builder`)}
+                                        >
+                                            <span className="mr-2 text-base">
+                                                <Sparkles size={16} />
+                                            </span>
+                                            <span>Level Builder</span>
+                                        </button>
 
                                     </>
                                 )}

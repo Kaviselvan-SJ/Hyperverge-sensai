@@ -73,6 +73,29 @@
         --input: 217.2 32.6% 17.5%;
         --ring: 212.7 26.8% 83.9%;
     }
+
+    /* Gamification Themes */
+    .theme-space_exploration {
+        --theme-primary: 260 80% 60%;
+        --theme-secondary: 200 80% 50%;
+        --theme-accent: 300 90% 70%;
+        --theme-bg: 240 10% 8%;
+        --theme-fg: 0 0% 95%;
+        --theme-node-completed: 140 70% 50%;
+        --theme-node-active: 50 90% 60%;
+        --theme-node-locked: 240 10% 30%;
+    }
+
+    .theme-cyber_city {
+        --theme-primary: 320 100% 60%;
+        --theme-secondary: 180 100% 50%;
+        --theme-accent: 60 100% 50%;
+        --theme-bg: 280 20% 5%;
+        --theme-fg: 180 100% 95%;
+        --theme-node-completed: 180 100% 50%;
+        --theme-node-active: 320 100% 60%;
+        --theme-node-locked: 280 20% 20%;
+    }
 }
 
 @layer base {

@@ -9,6 +9,7 @@ import confetti from "canvas-confetti";
 import SuccessSound from "./SuccessSound";
 import ModuleCompletionSound from "./ModuleCompletionSound";
 import ConfirmationDialog from "./ConfirmationDialog";
+import LearnerGamifiedMap from "./LearnerGamifiedMap";
 
 // Dynamically import viewer components to avoid SSR issues
 const DynamicLearningMaterialViewer = dynamic(
@@ -43,6 +44,7 @@ interface LearnerCourseViewProps {
     taskId?: string | null;
     questionId?: string | null;
     onUpdateTaskAndQuestionIdInUrl?: (taskId: string | null, questionId: string | null) => void;
+    gamifiedSubject?: any;
 }
 
 export default function LearnerCourseView({
@@ -60,6 +62,7 @@ export default function LearnerCourseView({
     taskId = null,
     questionId = null,
     onUpdateTaskAndQuestionIdInUrl = () => { },
+    gamifiedSubject = null
 }: LearnerCourseViewProps) {
     // Get user from auth context
     const { user } = useAuth();
@@ -988,7 +991,33 @@ export default function LearnerCourseView({
 
     return (
         <div className="bg-white dark:bg-black">
-            {filteredModules.length > 0 ? (
+            {/* Main Content Area */}
+            {gamifiedSubject ? (
+                <div className="flex-1 w-full flex items-center justify-center p-4 z-10 w-full">
+                    <div className="w-full max-w-4xl">
+                        <LearnerGamifiedMap 
+                            subject={gamifiedSubject} 
+                            learnerId={learnerId} 
+                            courseId={gamifiedSubject.course_id?.toString() || ""}
+                            onNodeClick={(clickedTaskId) => {
+                                // Find moduleId based on taskId so we can open it
+                                let foundModuleId = null;
+                                for (const m of filteredModules) {
+                                    if (m.items.some(i => i.id === clickedTaskId)) {
+                                        foundModuleId = m.id;
+                                        break;
+                                    }
+                                }
+                                if (foundModuleId) {
+                                    openTaskItem(foundModuleId, clickedTaskId);
+                                } else {
+                                    alert("Task not found in standard course syllabus mapping.");
+                                }
+                            }}
+                        />
+                    </div>
+                </div>
+            ) : filteredModules.length > 0 ? (
                 <CourseModuleList
                     modules={modulesWithProgress}
                     mode="view"

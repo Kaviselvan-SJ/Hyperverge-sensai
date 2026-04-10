@@ -20,7 +20,7 @@ import { CriterionData, ScorecardTemplate } from "./ScorecardPickerDialog";
 // Import the ScorecardManager component
 import ScorecardManager, { ScorecardManagerHandle } from "./ScorecardManager";
 // Import dropdown options
-import { questionTypeOptions, answerTypeOptions, codingLanguageOptions, questionPurposeOptions, copyPasteControlOptions } from "./dropdownOptions";
+import { questionTypeOptions, answerTypeOptions, codingLanguageOptions, questionPurposeOptions, copyPasteControlOptions, interactiveChallengeOptions } from "./dropdownOptions";
 // Import quiz types
 import { QuizEditorHandle, QuizQuestionConfig, QuizQuestion, QuizEditorProps, APIQuestionResponse, ScorecardCriterion } from "../types";
 import { extractTextFromBlocks, hasBlocksContent } from "@/lib/utils/blockUtils";
@@ -1670,6 +1670,19 @@ const QuizEditor = forwardRef<QuizEditorHandle, QuizEditorProps>(({
     const [selectedCodingLanguages, setSelectedCodingLanguages] = useState<DropdownOption[]>([codingLanguageOptions[0]]);
     const [selectedPurpose, setSelectedPurpose] = useState<DropdownOption>(questionPurposeOptions[0]);
     const [selectedCopyPasteControl, setSelectedCopyPasteControl] = useState<DropdownOption>(copyPasteControlOptions[0]);
+    const [selectedInteractiveChallenge, setSelectedInteractiveChallenge] = useState<DropdownOption>(interactiveChallengeOptions[0]);
+
+    // Handle interactive challenge type change
+    const handleInteractiveChallengeChange = useCallback((options: DropdownOption | DropdownOption[]) => {
+        const selected = Array.isArray(options) ? options[0] : options;
+        setSelectedInteractiveChallenge(selected);
+        handleConfigChange({
+            settings: {
+                ...currentQuestionConfig.settings,
+                interactiveChallengeType: selected.value
+            }
+        });
+    }, [handleConfigChange, currentQuestionConfig]);
 
     // Update the selected options based on the current question's config
     useEffect(() => {
@@ -1706,6 +1719,15 @@ const QuizEditor = forwardRef<QuizEditorHandle, QuizEditorProps>(({
                 setSelectedCodingLanguages(selectedLanguages.length > 0 ? selectedLanguages : [codingLanguageOptions[0]]);
             } else {
                 setSelectedCodingLanguages([]);
+            }
+
+            // Set interactive challenge type based on config.settings
+            const challengeType = currentConfig.settings?.interactiveChallengeType;
+            if (challengeType) {
+                const challengeOpt = interactiveChallengeOptions.find(opt => opt.value === challengeType);
+                setSelectedInteractiveChallenge(challengeOpt || interactiveChallengeOptions[0]);
+            } else {
+                setSelectedInteractiveChallenge(interactiveChallengeOptions[0]);
             }
         }
     }, [currentQuestionIndex, questions, getQuestionTypeOption, getAnswerTypeOption, getPurposeOption]);
@@ -1944,6 +1966,16 @@ const QuizEditor = forwardRef<QuizEditorHandle, QuizEditorProps>(({
                                                 options={questionTypeOptions}
                                                 selectedOption={selectedQuestionType}
                                                 onChange={handleQuestionTypeChange}
+                                                disabled={readOnly}
+                                            />
+                                        </div>
+                                        <div className="flex items-center">
+                                            <Dropdown
+                                                icon={<Sparkles size={16} />}
+                                                title="Challenge Sub-Type"
+                                                options={interactiveChallengeOptions}
+                                                selectedOption={selectedInteractiveChallenge}
+                                                onChange={handleInteractiveChallengeChange}
                                                 disabled={readOnly}
                                             />
                                         </div>

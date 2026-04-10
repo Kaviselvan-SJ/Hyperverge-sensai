@@ -493,6 +493,16 @@ async def ai_response_for_question(request: AIChatRequest):
                 )
                 question_details = f"**Task**\n\n{question_description}\n\n"
 
+                if question.get("settings"):
+                    try:
+                        settings_json = json.loads(question["settings"]) if isinstance(question["settings"], str) else question["settings"]
+                        if "interactiveChallengeType" in settings_json and settings_json["interactiveChallengeType"] not in ("none", None):
+                            challenge_type = settings_json["interactiveChallengeType"]
+                            payload = json.dumps(settings_json.get("challengePayload", {}), indent=2)
+                            question_details += f"**Interactive Challenge Configuration ({challenge_type})**\n\nNote: The student is completing a highly interactive gamified question variant ({challenge_type}). Below is the secret key/structural layout of the correct answer mappings.\n```json\n{payload}\n```\n\nPlease parse the student's submission and evaluate it against these correct parameters.\n\n"
+                    except Exception as e:
+                        pass
+
             task_metadata = await get_task_metadata(request.task_id)
             if task_metadata:
                 metadata.update(task_metadata)

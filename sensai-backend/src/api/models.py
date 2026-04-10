@@ -290,6 +290,23 @@ class QuestionType(Enum):
         return False
 
 
+class InteractiveChallengeType(str, Enum):
+    NONE = "none"
+    DRAG_DROP_ORDERING = "drag_drop_ordering"
+    MATCH_PAIRS = "match_pairs"
+    REARRANGE_CODE = "rearrange_code"
+    CLASSIFICATION = "classification"
+    FILL_IN_THE_BLANK = "fill_in_the_blank"
+    CODING_PROBLEM = "coding_problem"
+    CASE_BASED_REASONING = "case_based_reasoning"
+    LOGIC_PUZZLE = "logic_puzzle"
+    MULTI_SELECT_MCQ = "multi_select_mcq"
+    DEBUGGING = "debugging_exercise"
+
+    def __str__(self):
+        return self.value
+
+
 class ScorecardCriterion(BaseModel):
     name: str
     description: str
@@ -799,3 +816,94 @@ class UpdateIntegrationRequest(BaseModel):
     access_token: str | None = None
     refresh_token: str | None = None
     expires_at: datetime | None = None
+
+
+# Gamification Overlay Models
+
+class PersonaType(str, Enum):
+    EXPLORER = "explorer"
+    ACHIEVER = "achiever"
+    SOCIAL = "social"
+    COMPETITIVE = "competitive"
+    BALANCED = "balanced"
+
+
+class LearnerPersona(BaseModel):
+    user_id: int
+    persona_type: PersonaType
+    updated_at: datetime | None = None
+
+
+class AvailabilityLevel(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class GamificationStreak(BaseModel):
+    user_id: int
+    current_streak: int
+    highest_streak: int
+    availability: AvailabilityLevel
+    last_active_date: datetime | None = None
+    tasks_completed_today: int = 0
+
+
+class GamificationTheme(BaseModel):
+    id: int
+    name: str
+    css_variables: Dict[str, str]
+
+
+class UserProgressMap(BaseModel):
+    id: int
+    user_id: int
+    course_id: int
+    theme_id: Optional[int]
+    total_xp: int = 0
+    current_level: int = 0
+
+
+class DailyMission(BaseModel):
+    id: int
+    user_id: int
+    description: str
+    target_count: int
+    current_count: int
+    reward_xp: int
+    is_completed: bool
+    expires_at: datetime
+
+
+class UnlockCondition(BaseModel):
+    requires_task_id: int
+    min_score: float
+
+class LevelUnlockState(BaseModel):
+    id: int
+    user_id: int
+    task_id: int
+    is_unlocked: bool
+    is_completed: bool
+    score: Optional[float] = None
+    stars: int = 0
+
+class WeeklyBossLevel(BaseModel):
+    id: int
+    course_id: int
+    composite_task_ids: List[int]
+    is_active: bool
+
+class RewardInventory(BaseModel):
+    id: int
+    user_id: int
+    reward_type: str
+    item_id: str
+    quantity: int
+
+class XpTransaction(BaseModel):
+    id: int
+    user_id: int
+    amount: int
+    source: str
+    created_at: datetime

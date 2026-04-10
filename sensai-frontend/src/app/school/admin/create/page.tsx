@@ -135,7 +135,8 @@ export default function CreateSchool() {
                 const errorData = await response.json().catch(() => ({}));
 
                 if (errorData.detail) {
-                    if (errorData.detail.includes('already exists')) {
+                    const detailStr = String(errorData.detail).toLowerCase();
+                    if (detailStr.includes('already exists') || (detailStr.includes('unique constraint') && detailStr.includes('slug'))) {
                         setSlugError('This school URL is already taken. Please choose another.');
                         throw new Error('Slug already exists');
                     } else {
@@ -282,7 +283,7 @@ export default function CreateSchool() {
                                             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                                             className={`flex-1 px-3 sm:px-4 py-3 rounded-b-md sm:rounded-r-md sm:rounded-bl-none border sm:border-l-0 border-t-0 sm:border-t focus:outline-none focus:ring-1 bg-white border-gray-300 text-black focus:ring-black dark:bg-[#161925] dark:border-gray-800 dark:text-white dark:focus:ring-white ${slugError ? 'border-red-500' : ''}`}
                                             required
-                                            pattern="[a-z0-9-]+"
+                                            pattern="[a-z0-9\-]+"
                                             title="Only lowercase letters, numbers, and hyphens are allowed"
                                             maxLength={121}
                                         />

@@ -231,5 +231,18 @@ async def cleanup_invalid_chat_history():
         await conn.commit()
 
 
+async def create_gamification_tables_migration():
+    """
+    Migration: Creates the gamification tables if they don't exist.
+    """
+    async with get_new_db_connection() as conn:
+        cursor = await conn.cursor()
+        from api.db.gamification_schema import create_gamification_tables
+
+        await create_gamification_tables(cursor)
+
+        await conn.commit()
+
 async def run_migrations():
     await cleanup_invalid_chat_history()
+    await create_gamification_tables_migration()

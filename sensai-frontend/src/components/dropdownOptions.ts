@@ -110,3 +110,73 @@ export const codingLanguageOptions: DropdownOption[] = [
         "color": "#3182CE",
     }
 ];
+
+// Options for Interactive gamified challenge types
+export const interactiveChallengeOptions: DropdownOption[] = [
+    {
+        "label": "None (Chat/Code box)",
+        "value": "none",
+        "color": "#4B5563",
+        "tooltip": "Default input interface"
+    },
+    {
+        "label": "Drag & Drop Ordering",
+        "value": "drag_drop_ordering",
+        "color": "#E43F5A",
+        "tooltip": "Learners sequence blocks correctly"
+    },
+    {
+        "label": "Match Pairs",
+        "value": "match_pairs",
+        "color": "#3C6562",
+        "tooltip": "Connect related pairs"
+    },
+    {
+        "label": "Rearrange Code",
+        "value": "rearrange_code",
+        "color": "#614A82",
+        "tooltip": "Sort jumbled code snippets logically"
+    },
+    {
+        "label": "Classification",
+        "value": "classification",
+        "color": "#8A6D00",
+        "tooltip": "Bucket items into correct groups"
+    },
+    {
+        "label": "Fill in the blank",
+        "value": "fill_in_the_blank",
+        "color": "#2F6846",
+        "tooltip": "Place keywords in appropriate holes"
+    },
+    {
+        "label": "Multi-Select MCQs",
+        "value": "multi_select_mcq",
+        "color": "#3C6E47",
+        "tooltip": "Select all that apply from a list"
+    },
+    {
+        "label": "Coding Problem",
+        "value": "coding_problem",
+        "color": "#2D6A4F",
+        "tooltip": "Solve programmatic puzzles"
+    },
+    {
+        "label": "Case-based Reasoning",
+        "value": "case_based_reasoning",
+        "color": "#3A506B",
+        "tooltip": "Gamified scenario evaluation"
+    },
+    {
+        "label": "Logic Puzzles",
+        "value": "logic_puzzle",
+        "color": "#B15E6C",
+        "tooltip": "Gamified logic deduction tests"
+    },
+    {
+        "label": "Debugging",
+        "value": "debugging_exercise",
+        "color": "#9D4335",
+        "tooltip": "Find and fix bugs in code"
+    }
+];

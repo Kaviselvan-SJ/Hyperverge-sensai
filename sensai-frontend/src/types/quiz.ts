@@ -27,6 +27,8 @@ export interface QuizEditorHandle {
     handleScorecardChangesRevert: () => void;
 }
 
+export type InteractiveChallengeType = 'none' | 'drag_drop_ordering' | 'match_pairs' | 'rearrange_code' | 'classification' | 'fill_in_the_blank' | 'coding_problem' | 'case_based_reasoning' | 'logic_puzzle' | 'multi_select_mcq' | 'debugging_exercise';
+
 export interface QuizQuestionConfig {
     inputType: 'text' | 'code' | 'audio';
     responseType: 'chat' | 'exam';
@@ -37,7 +39,11 @@ export interface QuizQuestionConfig {
     knowledgeBaseBlocks: any[]; // Add knowledge base content blocks
     linkedMaterialIds: string[]; // Add IDs of linked learning materials
     title: string;
-    settings?: any;
+    settings?: {
+        interactiveChallengeType?: InteractiveChallengeType;
+        challengePayload?: any; // To hold specific layout configuration like mapped pairs.
+        [key: string]: any;
+    };
 }
 
 export interface QuizQuestion {
