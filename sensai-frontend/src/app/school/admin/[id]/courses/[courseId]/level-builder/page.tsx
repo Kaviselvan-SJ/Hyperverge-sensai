@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Save, Plus, Layers, Target, Flag, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Plus, Layers, Target, Flag, Pencil, Gift } from "lucide-react";
 import { Header } from "@/components/layout/header";
+import RewardsConfigEditor from "@/components/RewardsConfigEditor";
 
 export default function LevelBuilder() {
     const router = useRouter();
@@ -14,6 +15,7 @@ export default function LevelBuilder() {
     const [isLoading, setIsLoading] = useState(true);
     const [subject, setSubject] = useState<any>(null);
     const [message, setMessage] = useState("");
+    const [activeTab, setActiveTab] = useState<"map" | "rewards">("map");
 
     useEffect(() => {
         const fetchSubject = async () => {
@@ -139,7 +141,7 @@ export default function LevelBuilder() {
                         Back to Course Editor
                     </button>
                     
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 mb-8" style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)' }}>
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 mb-6" style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)' }}>
                         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-500 mb-2">Subject Level Map Builder 🎮</h1>
                         <p className="text-indigo-200">Convert standard courses into beautiful interactive journeys for your learners.</p>
                         
@@ -157,7 +159,30 @@ export default function LevelBuilder() {
                         )}
                     </div>
 
+                    {/* Tab bar */}
                     {subject && (
+                        <div className="flex bg-white rounded-xl shadow-sm border border-gray-100 mb-6 overflow-hidden">
+                            <button
+                                onClick={() => setActiveTab("map")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
+                                    activeTab === "map" ? "bg-indigo-600 text-white" : "text-gray-500 hover:bg-gray-50"
+                                }`}
+                            >
+                                <Layers className="w-4 h-4" /> Level Map
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("rewards")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-colors ${
+                                    activeTab === "rewards" ? "bg-indigo-600 text-white" : "text-gray-500 hover:bg-gray-50"
+                                }`}
+                            >
+                                <Gift className="w-4 h-4" /> Rewards & Certificates
+                            </button>
+                        </div>
+                    )}
+
+                    {/* MAP TAB */}
+                    {subject && activeTab === "map" && (
                         <div className="space-y-8">
                             <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                                 <h2 className="text-2xl font-bold text-gray-800 flex items-center"><Layers className="mr-2 text-indigo-500" /> Topic Journey Segments</h2>
@@ -252,6 +277,11 @@ export default function LevelBuilder() {
                                 ))}
                             </div>
                         </div>
+                    )}
+
+                    {/* REWARDS TAB */}
+                    {subject && activeTab === "rewards" && (
+                        <RewardsConfigEditor courseId={courseId} orgId={schoolId} />
                     )}
                     
                     {message && (

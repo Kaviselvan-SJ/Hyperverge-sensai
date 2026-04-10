@@ -3,13 +3,18 @@ import Link from "next/link";
 import { ModuleItem, Module } from "@/types/course";
 import CourseModuleList from "./CourseModuleList";
 import dynamic from "next/dynamic";
-import { X, CheckCircle, BookOpen, HelpCircle, Clipboard, ChevronLeft, ChevronRight, Menu, FileText, Brain, ClipboardList, Loader2, PenSquare } from "lucide-react";
+import { X, CheckCircle, BookOpen, HelpCircle, Clipboard, ChevronLeft, ChevronRight, Menu, FileText, Brain, ClipboardList, Loader2, PenSquare, Star, Medal, Zap, Target, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import confetti from "canvas-confetti";
 import SuccessSound from "./SuccessSound";
 import ModuleCompletionSound from "./ModuleCompletionSound";
 import ConfirmationDialog from "./ConfirmationDialog";
 import LearnerGamifiedMap from "./LearnerGamifiedMap";
+
+const DynamicCertificateCelebration = dynamic(
+    () => import("./CertificateCelebration"),
+    { ssr: false }
+);
 
 // Dynamically import viewer components to avoid SSR issues
 const DynamicLearningMaterialViewer = dynamic(
@@ -98,14 +103,18 @@ export default function LearnerCourseView({
     // Add state for AI responding status and confirmation dialog
     const [isAiResponding, setIsAiResponding] = useState(false);
     const [showNavigationConfirmation, setShowNavigationConfirmation] = useState(false);
+
+    // === BADGE & CERTIFICATE REWARD STATE ===
+    const [unlockedBadge, setUnlockedBadge] = useState<any | null>(null);
+    const [showCertificate, setShowCertificate] = useState(false);
+    const [certificateData, setCertificateData] = useState<{learnerName: string; courseName: string; issueDate: string; verificationId: string; mentorName?: string} | null>(null);
     const [pendingNavigation, setPendingNavigation] = useState<{ action: string; params?: any }>({ action: '' });
 
     // Add state for mobile sidebar visibility
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // Tracks whether the "Ask a doubt" chat overlay is open (mobile).
-    // Used to hide the prev/next footer so the chat input isn't covered.
     const [isAskDoubtOpen, setIsAskDoubtOpen] = useState(false);
+
 
     // List of encouragement messages
     const encouragementMessages = [
@@ -612,55 +621,122 @@ export default function LearnerCourseView({
         }
     }, [activeItem, activeModuleId, completedTasks, completedQuestions, onTaskComplete, onQuestionComplete]);
 
+    // Helper to render badge icon by name
+    const renderBadgeIcon = (iconName: string, cls: string = 'w-12 h-12') => {
+        switch ((iconName || '').toLowerCase()) {
+            case 'star': return <Star className={cls} />;
+            case 'medal': return <Medal className={cls} />;
+            case 'zap': return <Zap className={cls} />;
+            case 'shield': return <ShieldCheck className={cls} />;
+            default: return <Target className={cls} />;
+        }
+    };
+
     // Function to mark task as completed
     const markTaskComplete = async () => {
-        if (viewOnly || !activeItem || !activeModuleId || !userId) return;
+        // Log the state before the check
+        console.log("[SensAI Debug] markTaskComplete check:", { viewOnly, activeItemId: activeItem?.id, activeModuleId, userId });
+        
+        if (viewOnly || !activeItem || !userId) {
+            console.error("[SensAI Debug] markTaskComplete aborted due to missing requirements:", { viewOnly, activeItemMissing: !activeItem, userIdMissing: !userId });
+            return;
+        }
 
         // Set loading state to true to show spinner
         setIsMarkingComplete(true);
 
         try {
-            // Store chat message for learning material completion
-            // This is similar to the chat message storage in LearnerQuizView
-            // but we only send a user message, not an AI response
-            try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/tasks/${activeItem.id}/complete`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ user_id: parseInt(userId) })
-                });
+            // Call backend to persist completion — response now includes new_badges
+            let newBadges: any[] = [];
+            
+            console.log("[SensAI Debug] markTaskComplete hitting API for taskId:", activeItem.id, "userId:", userId);
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/tasks/${activeItem.id}/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: parseInt(userId) })
+            });
 
-                if (!response.ok) {
-                    throw new Error('Failed to store learning material completion');
-                }
-            } catch (error) {
-                console.error('Error storing learning material completion:', error);
-                // Continue execution even if this fails - don't block the UI update
+            console.log("[SensAI Debug] API Response status:", response.status);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log("[SensAI Debug] API Response data:", data);
+                newBadges = data.new_badges || [];
+            } else {
+                const errorData = await response.text();
+                console.log("[SensAI Debug] API Error body:", errorData);
+                throw new Error('Failed to store learning material completion');
             }
 
-            // Use the shared task completion handler
+            // Use the shared task completion handler (local UI state updates)
             handleTaskCompletion(activeItem.id, true);
 
-            // Find the current module
-            const currentModule = filteredModules.find(m => m.id === activeModuleId);
-            if (!currentModule) return;
+            // Show badge popup if any were unlocked
+            if (newBadges.length > 0) {
+                setUnlockedBadge(newBadges[0]);
+                setTimeout(() => setUnlockedBadge(null), 5000);
+            }
 
-            // Find the index of the current task in the module
-            const currentTaskIndex = currentModule.items.findIndex(item => item.id === activeItem.id);
-            if (currentTaskIndex === -1) return;
+            // Check if ALL gamified levels are now complete → show certificate
+            if (gamifiedSubject) {
+                const updatedCompleted = { ...completedTasks, [activeItem.id]: true };
+                const allLevelTaskIds: string[] = [];
+                gamifiedSubject.topics?.forEach((topic: any) => {
+                    topic.levels?.forEach((level: any) => {
+                        const taskId = level.subtopics?.[0]?.task_id;
+                        if (taskId) allLevelTaskIds.push(taskId.toString());
+                    });
+                });
+                if (allLevelTaskIds.length > 0 && allLevelTaskIds.every(id => updatedCompleted[id])) {
+                    // All done — generate certificate
+                    try {
+                        const certRes = await fetch(
+                            `${process.env.NEXT_PUBLIC_BACKEND_URL}/gamification/certificates/generate`,
+                            {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ user_id: parseInt(userId), course_id: parseInt(gamifiedSubject.course_id) })
+                            }
+                        );
+                        if (certRes.ok) {
+                            const certData = await certRes.json();
+                            setCertificateData({
+                                learnerName: learnerName || user?.name || 'Learner',
+                                courseName: gamifiedSubject.course_name || 'Your Course',
+                                issueDate: new Date().toISOString(),
+                                verificationId: certData.verification_id || 'VER-PREVIEW',
+                                mentorName: certData.mentor_name
+                            });
+                            setShowCertificate(true);
+                        }
+                    } catch (certErr) {
+                        console.error("[SensAI Debug] Error generating certificate:", certErr);
+                        // Show local preview even if server call fails
+                        setCertificateData({
+                            learnerName: learnerName || 'Learner',
+                            courseName: gamifiedSubject.course_name || 'Your Course',
+                            issueDate: new Date().toISOString(),
+                            verificationId: 'VER-LOCAL'
+                        });
+                        setShowCertificate(true);
+                    }
+                }
+            }
 
-            // Check if there's a next task in this module
-            if (currentTaskIndex < currentModule.items.length - 1) {
-                // Navigate to the next task in the same module
-                const nextTask = currentModule.items[currentTaskIndex + 1];
-                openTaskItem(activeModuleId, nextTask.id);
+            // Find the current module and navigate (Normal course flow)
+            if (activeModuleId) {
+                const currentModule = filteredModules.find(m => m.id === activeModuleId);
+                if (currentModule) {
+                    const currentTaskIndex = currentModule.items.findIndex(item => item.id === activeItem.id);
+                    if (currentTaskIndex !== -1 && currentTaskIndex < currentModule.items.length - 1) {
+                        const nextTask = currentModule.items[currentTaskIndex + 1];
+                        openTaskItem(activeModuleId, nextTask.id);
+                    }
+                }
             }
         } catch (error) {
-            console.error("Error marking task as complete:", error);
+            console.error("[SensAI Debug] Error marking task as complete:", error);
         } finally {
-            // Reset loading state
             setIsMarkingComplete(false);
         }
     };
@@ -910,6 +986,7 @@ export default function LearnerCourseView({
             [taskId]: true
         };
 
+        console.log("[SensAI Debug] handleTaskCompletion locally updating state for taskId:", taskId);
         // Mark the task as completed in our local state
         setCompletedTasks(newCompletedTasks);
 
@@ -1014,6 +1091,7 @@ export default function LearnerCourseView({
                                     alert("Task not found in standard course syllabus mapping.");
                                 }
                             }}
+                            completedTasks={completedTasks}
                         />
                     </div>
                 </div>
@@ -1038,6 +1116,46 @@ export default function LearnerCourseView({
                         </p>
                     </div>
                 </div>
+            )}
+
+            {/* === BADGE UNLOCK POPUP === */}
+            {unlockedBadge && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] flex flex-col items-center"
+                    style={{ animation: 'badgeSlideUp 0.5s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+                    <style>{`
+                        @keyframes badgeSlideUp {
+                            from { opacity:0; transform: translateX(-50%) translateY(40px) scale(0.8); }
+                            to   { opacity:1; transform: translateX(-50%) translateY(0)  scale(1); }
+                        }
+                    `}</style>
+                    <div className="bg-gradient-to-br from-amber-400 via-orange-400 to-pink-500 p-[2px] rounded-2xl shadow-2xl shadow-amber-400/40">
+                        <div className="bg-slate-900 rounded-2xl px-8 py-6 flex flex-col items-center gap-3 min-w-[260px]">
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-300 to-orange-500 flex items-center justify-center text-white shadow-inner">
+                                {renderBadgeIcon(unlockedBadge.badge_icon)}
+                            </div>
+                            <div className="text-center">
+                                <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">🏅 Badge Unlocked!</p>
+                                <h3 className="text-lg font-bold text-white">{unlockedBadge.badge_title}</h3>
+                                <p className="text-slate-400 text-sm mt-1">{unlockedBadge.badge_description}</p>
+                            </div>
+                            <span className="bg-amber-400/20 text-amber-300 font-bold text-sm px-4 py-1 rounded-full border border-amber-400/30">
+                                +{unlockedBadge.xp_reward} XP
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* === CERTIFICATE CELEBRATION MODAL === */}
+            {showCertificate && certificateData && (
+                <DynamicCertificateCelebration
+                    learnerName={certificateData.learnerName}
+                    courseName={certificateData.courseName}
+                    issueDate={certificateData.issueDate}
+                    verificationId={certificateData.verificationId}
+                    mentorName={certificateData.mentorName}
+                    onClose={() => setShowCertificate(false)}
+                />
             )}
 
             {/* Success Sound */}
@@ -1276,7 +1394,7 @@ export default function LearnerCourseView({
                                     {activeItem?.type === 'material' && !completedTasks[activeItem?.id] && !viewOnly && (
                                         <button
                                             onClick={markTaskComplete}
-                                            className={`hidden lg:flex items-center px-4 py-2 text-sm rounded-full transition-colors border text-white border-indigo-600 bg-indigo-600 hover:bg-indigo-700 focus:border-indigo-700 active:bg-indigo-800 dark:border-emerald-500 dark:bg-transparent dark:hover:bg-[#222222] dark:focus:border-emerald-500 dark:active:bg-[#222222] ${isMarkingComplete ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                                            className={`hidden lg:flex items-center px-4 py-2 text-sm rounded-full transition-colors border text-white ${isMarkingComplete ? 'bg-gray-400 border-gray-400 cursor-not-allowed opacity-70' : 'border-indigo-600 bg-indigo-600 hover:bg-indigo-700 focus:border-indigo-700 active:bg-indigo-800 cursor-pointer dark:border-emerald-500 dark:bg-transparent dark:hover:bg-[#222222] dark:focus:border-emerald-500 dark:active:bg-[#222222]'}`}
                                             aria-label="Mark complete"
                                             disabled={isMarkingComplete}
                                         >

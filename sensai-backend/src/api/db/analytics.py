@@ -66,7 +66,7 @@ async def get_usage_summary_by_organization(
     ]
 
 
-@cached(ttl=30, cache=SimpleMemoryCache)
+@cached(ttl=1, cache=SimpleMemoryCache)
 async def get_cohort_completion(
     cohort_id: int, user_ids: List[int], course_id: int = None
 ):

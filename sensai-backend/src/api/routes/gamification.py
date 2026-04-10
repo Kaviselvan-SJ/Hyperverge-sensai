@@ -13,6 +13,12 @@ from api.db.gamification import (
     create_subtopic,
     get_subject_with_hierarchy
 )
+from api.db.rewards import (
+    get_badge_templates,
+    create_badge_template,
+    verify_certificate,
+    setup_auto_certificates
+)
 
 # A router for Gamification Overlay
 router = APIRouter()
@@ -88,6 +94,102 @@ async def builder_create_level(payload: LevelCreate):
 async def builder_create_subtopic(payload: SubtopicCreate):
     return await create_subtopic(payload.level_id, payload.task_id or None, payload.subtopic_title, payload.content_reference, payload.challenge_node_reference, payload.completion_threshold, payload.sequence_index)
 
+# --- Badge & Certificate Rewards ---
+
+class BadgeCreate(BaseModel):
+    badge_title: str
+    badge_description: str
+    badge_icon: str
+    badge_type: str
+    xp_reward: int
+    unlock_condition: str
+    difficulty_level: str = "medium"
+
+@router.get("/badges")
+async def get_all_badges():
+    return await get_badge_templates()
+
+@router.post("/badges")
+async def create_badge(request: BadgeCreate):
+    badge_id = await create_badge_template(
+        request.badge_title,
+        request.badge_description,
+        request.badge_icon,
+        request.badge_type,
+        request.xp_reward,
+        request.unlock_condition,
+        request.difficulty_level
+    )
+    return {"id": badge_id, "badge_title": request.badge_title}
+
+@router.put("/badges/{badge_id}")
+async def update_badge(badge_id: int, request: BadgeCreate):
+    from api.utils.db import execute_db_operation
+    await execute_db_operation(
+        """UPDATE badge_templates SET badge_title=?, badge_description=?, badge_icon=?, badge_type=?,
+           difficulty_level=?, xp_reward=?, unlock_condition=? WHERE id=?""",
+        (request.badge_title, request.badge_description, request.badge_icon, request.badge_type,
+         request.difficulty_level, request.xp_reward, request.unlock_condition, badge_id)
+    )
+    return {"id": badge_id, "badge_title": request.badge_title}
+
+@router.delete("/badges/{badge_id}")
+async def delete_badge(badge_id: int):
+    from api.utils.db import execute_db_operation
+    await execute_db_operation("DELETE FROM badge_templates WHERE id=?", (badge_id,))
+    return {"success": True}
+
+@router.get("/certificates/verify/{verification_id}")
+async def verify_cert(verification_id: str):
+    cert = await verify_certificate(verification_id)
+    if not cert:
+        raise HTTPException(status_code=404, detail="Invalid or Unrecognized Certificate")
+    return cert
+
+# --- Certificate Template CRUD ---
+
+class CertTemplateCreate(BaseModel):
+    org_id: int
+    course_id: Optional[int] = None
+    certificate_title: str
+    signatory_name: Optional[str] = None
+    signature_image: Optional[str] = None
+    institution_logo: Optional[str] = None
+    certificate_background: Optional[str] = "default"
+
+@router.get("/certificate-template/{course_id}")
+async def get_cert_template(course_id: int):
+    from api.utils.db import execute_db_operation
+    row = await execute_db_operation(
+        "SELECT id, certificate_title, signatory_name, institution_logo, certificate_background FROM certificate_templates WHERE course_id=?",
+        (course_id,), fetch_one=True
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="No template yet")
+    return {"id": row[0], "certificate_title": row[1], "signatory_name": row[2],
+            "institution_logo": row[3], "certificate_background": row[4]}
+
+@router.post("/certificate-template")
+async def create_cert_template(request: CertTemplateCreate):
+    from api.utils.db import execute_db_operation
+    template_id = await execute_db_operation(
+        """INSERT INTO certificate_templates (org_id, course_id, certificate_title, signatory_name, signature_image, institution_logo, certificate_background)
+           VALUES (?,?,?,?,?,?,?)""",
+        (request.org_id, request.course_id, request.certificate_title, request.signatory_name,
+         request.signature_image, request.institution_logo, request.certificate_background),
+        get_last_row_id=True
+    )
+    return {"id": template_id}
+
+@router.put("/certificate-template/{template_id}")
+async def update_cert_template(template_id: int, request: CertTemplateCreate):
+    from api.utils.db import execute_db_operation
+    await execute_db_operation(
+        """UPDATE certificate_templates SET certificate_title=?, signatory_name=?, institution_logo=?, certificate_background=? WHERE id=?""",
+        (request.certificate_title, request.signatory_name, request.institution_logo, request.certificate_background, template_id)
+    )
+    return {"id": template_id}
+
 @router.get("/builder/subject/{course_id}")
 async def builder_get_subject(course_id: int):
     hierarchy = await get_subject_with_hierarchy(course_id)
@@ -119,3 +221,46 @@ async def builder_initialize_task(level_id: int):
         raise HTTPException(status_code=404, detail="Level not found")
     return result
 
+
+# --- Certificate Generation ---
+
+class CertGenerateRequest(BaseModel):
+    user_id: int
+    course_id: int
+
+@router.post("/certificates/generate")
+async def generate_certificate(request: CertGenerateRequest):
+    result = await setup_auto_certificates(request.user_id, request.course_id)
+    if not result:
+        raise HTTPException(status_code=400, detail="Could not generate certificate. Ensure all levels are completed.")
+    return result
+
+@router.get("/user/{user_id}/badges")
+async def get_user_badges(user_id: int):
+    from api.utils.db import execute_db_operation
+    rows = await execute_db_operation(
+        """SELECT bt.id, bt.badge_title, bt.badge_description, bt.badge_icon, bt.badge_type,
+                  bt.difficulty_level, bt.xp_reward, ub.earned_at
+           FROM user_badges ub
+           JOIN badge_templates bt ON ub.badge_id = bt.id
+           WHERE ub.user_id = ?
+           ORDER BY ub.earned_at DESC""",
+        (user_id,), fetch_all=True
+    )
+    return [
+        {"id": r[0], "badge_title": r[1], "badge_description": r[2], "badge_icon": r[3],
+         "badge_type": r[4], "difficulty_level": r[5], "xp_reward": r[6], "earned_at": r[7]}
+        for r in rows
+    ]
+
+@router.get("/user/{user_id}/certificate/{course_id}")
+async def get_user_certificate(user_id: int, course_id: int):
+    from api.utils.db import execute_db_operation
+    row = await execute_db_operation(
+        "SELECT verification_id, completion_score, issue_date FROM user_certificates WHERE user_id = ? AND course_id = ?",
+        (user_id, course_id), fetch_one=True
+    )
+    if not row:
+        # Return null with 200 — 404 causes unavoidable browser console errors
+        return None
+    return {"verification_id": row[0], "completion_score": row[1], "issue_date": row[2]}

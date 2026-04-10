@@ -835,7 +835,7 @@ export default function LearningMaterialViewer({
 
                                 {/* Mark as complete button */}
                                 <div className="flex items-center gap-3">
-                                    <span className="bg-emerald-600 dark:bg-black text-white py-2 px-4 rounded-full text-sm shadow-md">
+                                    <span className="py-2 px-4 rounded-full text-sm shadow-md bg-emerald-600 dark:bg-black text-white">
                                         Mark as complete
                                     </span>
                                     <button
@@ -843,7 +843,7 @@ export default function LearningMaterialViewer({
                                             setIsMobileMenuOpen(false);
                                             onMarkComplete();
                                         }}
-                                        className="mobile-action-button rounded-full flex items-center justify-center shadow-md cursor-pointer transition-colors bg-emerald-500 dark:bg-green-700 text-white hover:bg-emerald-600 dark:hover:bg-green-600"
+                                        className="mobile-action-button rounded-full flex items-center justify-center shadow-md transition-colors text-white cursor-pointer bg-emerald-500 dark:bg-green-700 hover:bg-emerald-600 dark:hover:bg-green-600"
                                         aria-label="Mark as complete"
                                     >
                                         <CheckCircle className="h-6 w-6" />

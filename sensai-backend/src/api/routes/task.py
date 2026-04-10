@@ -155,10 +155,52 @@ async def get_task(task_id: int) -> LearningMaterialTask | QuizTask | Assignment
     return task
 
 
+from api.db.rewards import check_and_award_badges
+from api.utils.db import execute_db_operation as _db
+
 @router.post("/{task_id}/complete")
 async def mark_task_completed(task_id: int, request: MarkTaskCompletedRequest):
-    await mark_task_completed_in_db(task_id, request.user_id)
-    return {"success": True}
+    print(f"[SensAI DBG] Received completion request for task {task_id}, user {request.user_id}")
+    try:
+        await mark_task_completed_in_db(task_id, request.user_id)
+        print(f"[SensAI DBG] Persisted completion to DB successfully")
+    except Exception as e:
+        print(f"[SensAI DBG] ERROR persisting to DB: {str(e)}")
+        raise e
+
+    # Resolve course_id for this task so badge conditions can be scoped correctly
+    course_row = await _db(
+        "SELECT course_id FROM course_tasks WHERE task_id = ? LIMIT 1",
+        (task_id,), fetch_one=True
+    )
+    # Also try via gamification subtopics → subject → course_id
+    if not course_row:
+        course_row = await _db(
+            """SELECT s.course_id FROM subtopics st
+               JOIN levels l ON l.id = st.level_id
+               JOIN topics t ON t.id = l.topic_id
+               JOIN subjects s ON s.id = t.subject_id
+               WHERE st.task_id = ? LIMIT 1""",
+            (task_id,), fetch_one=True
+        )
+
+    course_id = course_row[0] if course_row else None
+
+    # Evaluate badge conditions and award any newly qualifying badges
+    print(f"[SensAI DBG] Evaluating badges for course_id: {course_id}")
+    try:
+        newly_earned = await check_and_award_badges(
+            user_id=request.user_id,
+            task_id=task_id,
+            course_id=course_id
+        )
+        print(f"[SensAI DBG] Badges awarded: {len(newly_earned)}")
+    except Exception as e:
+        print(f"[SensAI DBG] ERROR in check_and_award_badges: {str(e)}")
+        # We still return success for the task completion even if badge awarding fails
+        newly_earned = []
+
+    return {"success": True, "new_badges": newly_earned}
 
 
 @router.post("/{task_id}/assignment", response_model=AssignmentTask)

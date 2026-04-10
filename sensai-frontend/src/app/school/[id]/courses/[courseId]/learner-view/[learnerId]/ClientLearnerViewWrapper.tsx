@@ -92,7 +92,7 @@ export default function ClientLearnerViewWrapper({
             modules={modules}
             completedTaskIds={completedTaskIds}
             completedQuestionIds={completedQuestionIds}
-            viewOnly={true}
+            viewOnly={false}
             learnerId={learnerId}
             isAdminView={isAdminView}
             learnerName={learnerName}

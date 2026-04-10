@@ -214,3 +214,85 @@ async def create_gamification_tables(cursor):
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # REWARD SYSTEM ADDITIONS: BADGES & CERTIFICATES
+    
+    await cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS badge_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            badge_title TEXT NOT NULL,
+            badge_description TEXT,
+            badge_icon TEXT NOT NULL,
+            badge_type TEXT NOT NULL,
+            difficulty_level TEXT,
+            xp_reward INTEGER DEFAULT 0,
+            unlock_condition TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    await cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS user_badges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            badge_id INTEGER NOT NULL,
+            earned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, badge_id),
+            FOREIGN KEY (user_id) REFERENCES {users_table_name}(id) ON DELETE CASCADE,
+            FOREIGN KEY (badge_id) REFERENCES badge_templates(id) ON DELETE CASCADE
+        )
+    """)
+
+    await cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS badge_unlock_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            badge_id INTEGER NOT NULL,
+            rule_type TEXT NOT NULL,
+            target_id INTEGER,
+            threshold TEXT,
+            FOREIGN KEY (badge_id) REFERENCES badge_templates(id) ON DELETE CASCADE
+        )
+    """)
+
+    await cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS certificate_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            org_id INTEGER NOT NULL,
+            course_id INTEGER,
+            certificate_title TEXT NOT NULL,
+            signatory_name TEXT,
+            signature_image TEXT,
+            institution_logo TEXT,
+            certificate_background TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (course_id) REFERENCES {courses_table_name}(id) ON DELETE CASCADE
+        )
+    """)
+
+    await cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS user_certificates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            course_id INTEGER NOT NULL,
+            template_id INTEGER,
+            verification_id TEXT NOT NULL UNIQUE,
+            completion_score REAL,
+            issue_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, course_id),
+            FOREIGN KEY (user_id) REFERENCES {users_table_name}(id) ON DELETE CASCADE,
+            FOREIGN KEY (course_id) REFERENCES {courses_table_name}(id) ON DELETE CASCADE,
+            FOREIGN KEY (template_id) REFERENCES certificate_templates(id) ON DELETE SET NULL
+        )
+    """)
+
+    await cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS certificate_verification_registry (
+            verification_id TEXT PRIMARY KEY,
+            learner_name TEXT NOT NULL,
+            course_name TEXT NOT NULL,
+            mentor_name TEXT,
+            issue_date DATETIME NOT NULL,
+            completion_status TEXT DEFAULT 'verified',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)

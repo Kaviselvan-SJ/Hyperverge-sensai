@@ -236,6 +236,10 @@ async def initialize_task_for_level(level_id: int):
     from api.db.task import create_draft_task_for_course
     task_id, _ = await create_draft_task_for_course(level_title, "learning_material", course_id, milestone_id)
     
+    # Immediately change gamification placeholder tasks to 'published' so they successfully 
+    # record completion progress in mapping arrays upon mentor test
+    await execute_db_operation("UPDATE tasks SET status = 'published' WHERE id = ?", (task_id,))
+    
     # Create subtopic mapped to this new task
     await execute_db_operation(
         "INSERT INTO subtopics (level_id, task_id, subtopic_title, content_reference, challenge_node_reference, completion_threshold, sequence_index) VALUES (?, ?, ?, ?, ?, ?, ?)",
